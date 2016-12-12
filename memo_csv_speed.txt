@@ -1,0 +1,122 @@
+
+PHP: CSV ファイルを SJIS -> UTF8 変換して配列に格納する速度テスト
+
+// １）fgets を使用。変換処理はライン毎
+function test_fgets()
+{
+    $fp = fopen('player_lists/ranking_new.csv', 'r');
+    if ($fp)
+    {
+        while (($data = fgets($fp)) !== FALSE)
+        {
+            $data = explode(",", $data);
+            mb_convert_variables('UTF-8', 'sjis-win', $data);
+        }
+        fclose($fp);
+    }
+}
+
+// ２）file_get_contents を使用。変換処理は最初に一回だけ。期待値大
+function test_file_get_contents()
+{
+    $buf = file_get_contents('player_lists/ranking_new.csv');
+    mb_convert_variables('UTF-8', 'sjis-win', $buf);
+    $lines = explode("\n", $buf);
+    foreach ($lines as $line)
+    {
+        $data = explode(",", $line);
+    }
+}
+
+// ３）SplFileObject + foreach を使用。変換処理はライン毎
+function test_spl_file_object()
+{
+    $sfo = new SplFileObject('player_lists/ranking_new.csv');
+    $sfo = $sfo->setFlags(SplFileObject::READ_CSV);
+    foreach ($sfo as $line)
+    {
+        mb_convert_variables('UTF-8', 'sjis-win', $line);
+        $data = explode(",", $line);
+    }
+}
+
+// 4）SplFileObject + fgets を使用。変換処理はライン毎
+function test_spl_file_object2()
+{
+    $sfo = new SplFileObject('player_lists/ranking_new.csv', "r");
+
+    $sfo->fgets();
+    while (!$sfo->eof())
+    {
+      $line = $sfo->fgets();
+      mb_convert_variables('UTF-8', 'sjis-win', $line);
+      $data = explode(",", $line);
+    }
+}
+
+10回試行。
+結果は microtime を 1000倍した値
+
+>> 1
+1: 0.52400000000008
+2: 0.22499999999992
+3: 0.033999999999978
+4: 0.46800000000002
+
+>> 2
+1: 0.53099999999995
+2: 0.21599999999999
+3: 0.036000000000036
+4: 0.42200000000003
+
+>> 3
+1: 1.076
+2: 0.73200000000001
+3: 0.17099999999998
+4: 0.753
+
+>> 4
+1: 0.43099999999996
+2: 0.23700000000004
+3: 0.032000000000032
+4: 0.35099999999999
+
+>> 5
+1: 0.83700000000009
+2: 0.24899999999994
+3: 0.043000000000015
+4: 0.417
+
+>> 6
+1: 0.45300000000004
+2: 0.58099999999994
+3: 0.068999999999986
+4: 0.79200000000001
+
+>> 7
+1: 0.57499999999999
+2: 0.20500000000001
+3: 0.036999999999954
+4: 0.39900000000004
+
+>> 8
+1: 0.46800000000002
+2: 0.19200000000003
+3: 0.031000000000003
+4: 0.39599999999995
+
+>> 9
+1: 0.60900000000008
+2: 0.17699999999998
+3: 0.026999999999999
+4: 0.38899999999997
+
+>> 10
+1: 0.511
+2: 0.169
+3: 0.024999999999999
+4: 0.365
+
+SplFileObject + foreach 爆速
+変換処理は最適化されてるのかボトルネックにならない
+
